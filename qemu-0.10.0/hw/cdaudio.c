@@ -2,6 +2,8 @@
 #include "cdaudio.h"
 #include "bswap.h"
 
+#ifdef CONFIG_CDAUDIO
+
 typedef struct CDAudioState {
     QEMUSoundCard card;
     SWVoiceOut *voice;
@@ -76,3 +78,4 @@ void cdaudio_stop(void)
     if (cd_audio.voice)
         AUD_set_active_out(cd_audio.voice, 0);
 }
+#endif /* CONFIG_CDAUDIO */

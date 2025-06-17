@@ -1800,11 +1800,14 @@ static void ide_atapi_cmd(IDEState *s)
         }
         break;
     case GPCMD_PLAY_AUDIO_10:
-        lba = ube32_to_cpu(packet + 2);
-        nb_sectors = ube16_to_cpu(packet + 7);
-        cdaudio_set_bs(s->bs);
-        cdaudio_play_lba(lba, nb_sectors);
-        ide_atapi_cmd_ok(s);
+        {
+            int lba, nb_sectors;
+            lba = ube32_to_cpu(packet + 2);
+            nb_sectors = ube16_to_cpu(packet + 7);
+            cdaudio_set_bs(s->bs);
+            cdaudio_play_lba(lba, nb_sectors);
+            ide_atapi_cmd_ok(s);
+        }
         break;
     case GPCMD_PLAY_AUDIO_MSF:
         { int start_lba = msf_to_lba_local(packet[3], packet[4], packet[5]);
