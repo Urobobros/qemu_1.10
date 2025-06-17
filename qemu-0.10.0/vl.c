@@ -153,6 +153,7 @@ static int cue_extract_bin(const char *cuefile, char *out, int out_size)
     FILE *f = fopen(cuefile, "r");
     char line[LINE_BUF_LEN];
     char dir[1024];
+    char first_file[1024] = "";
     const char *p;
     int cur_is_audio = 0;
 
@@ -176,29 +177,21 @@ static int cue_extract_bin(const char *cuefile, char *out, int out_size)
         dir[0] = '\0';
 
     while (fgets(line, sizeof(line), f)) {
-        if (strstr(line, "FILE")) {
-            char *q = strchr(line, '"');
-            if (!q)
-                continue;
-            q++;
-            p = strchr(q, '"');
-            if (!p)
-                continue;
-            int len = p - q;
-            if (len > sizeof(cue_sheet.bin_path) - 1)
-                len = sizeof(cue_sheet.bin_path) - 1;
-            memcpy(cue_sheet.bin_path, q, len);
-            cue_sheet.bin_path[len] = '\0';
-            if (!path_is_absolute(cue_sheet.bin_path)) {
-                char tmp[1024];
-                path_combine(tmp, sizeof(tmp), dir, cue_sheet.bin_path);
-                pstrcpy(cue_sheet.bin_path, sizeof(cue_sheet.bin_path), tmp);
+        char keyword[16];
+        if (sscanf(line, " %15s", keyword) != 1)
+            continue;
+
+        if (!strcasecmp(keyword, "FILE")) {
+            char filename[1024];
+            if (sscanf(line, " FILE \"%1023[^\"]\"", filename) == 1) {
+                if (first_file[0] == '\0')
+                    pstrcpy(first_file, sizeof(first_file), filename);
             }
-        } else if (strstr(line, "TRACK")) {
-            cur_is_audio = strstr(line, "AUDIO") != NULL;
-        } else if (strstr(line, "INDEX 01")) {
-            int m, s, fframe;
-            if (sscanf(line, "%*s %*s %d:%d:%d", &m, &s, &fframe) == 3) {
+        } else if (!strcasecmp(keyword, "TRACK")) {
+            cur_is_audio = (strstr(line, "AUDIO") != NULL);
+        } else if (!strcasecmp(keyword, "INDEX")) {
+            int index, m, s, fframe;
+            if (sscanf(line, " INDEX %d %d:%d:%d", &index, &m, &s, &fframe) == 4 && index == 1) {
                 if (cue_sheet.track_count < 100) {
                     cue_sheet.tracks[cue_sheet.track_count].lba = msf_to_lba(m, s, fframe);
                     cue_sheet.tracks[cue_sheet.track_count].is_audio = cur_is_audio;
@@ -209,7 +202,13 @@ static int cue_extract_bin(const char *cuefile, char *out, int out_size)
     }
     fclose(f);
 
-    if (cue_sheet.track_count > 0) {
+    if (cue_sheet.track_count > 0 && first_file[0]) {
+        pstrcpy(cue_sheet.bin_path, sizeof(cue_sheet.bin_path), first_file);
+        if (!path_is_absolute(cue_sheet.bin_path)) {
+            char tmp[1024];
+            path_combine(tmp, sizeof(tmp), dir, cue_sheet.bin_path);
+            pstrcpy(cue_sheet.bin_path, sizeof(cue_sheet.bin_path), tmp);
+        }
         pstrcpy(out, out_size, cue_sheet.bin_path);
         return 0;
     }
@@ -4971,7 +4970,18 @@ int main(int argc, char **argv, char **envp)
                 kernel_cmdline = optarg;
                 break;
             case QEMU_OPTION_cdrom:
+#ifdef CONFIG_CDAUDIO
+                {
+                    char cuepath[1024];
+                    if (cue_extract_bin(optarg, cuepath, sizeof(cuepath)) == 0) {
+                        drive_add(cuepath, CDROM_ALIAS);
+                    } else {
+                        drive_add(optarg, CDROM_ALIAS);
+                    }
+                }
+#else
                 drive_add(optarg, CDROM_ALIAS);
+#endif
                 break;
             case QEMU_OPTION_boot:
                 boot_devices = optarg;
