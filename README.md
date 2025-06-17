@@ -48,3 +48,7 @@ Run QEMU with for example:
 ```sh
 QEMU_AUDIO_DRV=alsa ./i386-softmmu/qemu -L pc-bios -cdrom spl.cue -hda DISKDOS.IMG -boot c -m 64 -soundhw sb16
 ```
+
+Only simple cuesheets that reference a single binary image are currently
+supported.  If your `.cue` file contains multiple `FILE` entries, QEMU
+uses the file associated with the first track and ignores the others.
