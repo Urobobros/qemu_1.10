@@ -10,9 +10,12 @@ headers used by the build.
 ```sh
 ./scripts/install_sdl12.sh     # installs libsdl1.2-dev if needed
 cd qemu-0.10.0
-./configure --target-list=i386-softmmu
+./configure --target-list=i386-softmmu [--enable-cdaudio]
 make -j$(nproc)
 ```
+
+Passing `--enable-cdaudio` compiles the experimental CD audio support. Omit
+the option to build without it.
 
 The resulting `i386-softmmu/qemu` binary can then be run using your preferred
 arguments.

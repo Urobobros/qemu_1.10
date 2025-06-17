@@ -138,6 +138,7 @@
 #define memalign(align, size) malloc(size)
 #endif
 
+#ifdef CONFIG_CDAUDIO
 #define LINE_BUF_LEN 1024
 
 CueSheet cue_sheet;
@@ -214,6 +215,7 @@ static int cue_extract_bin(const char *cuefile, char *out, int out_size)
     }
     return -1;
 }
+#endif /* CONFIG_CDAUDIO */
 #ifdef CONFIG_SDL
 #ifdef __APPLE__
 #include <SDL/SDL.h>
