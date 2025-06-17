@@ -772,6 +772,8 @@ static inline int handle_cpu_signal(unsigned long pc, unsigned long address,
 {
     TranslationBlock *tb;
     int ret;
+    fprintf(stderr, "handle_cpu_signal: pc=0x%lx address=0x%lx write=%d\n",
+            pc, address, is_write);
 
     if (cpu_single_env)
         env = cpu_single_env; /* XXX: find a correct solution for multithread */
