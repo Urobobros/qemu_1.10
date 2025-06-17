@@ -124,6 +124,7 @@ static TranslationBlock *tb_find_slow(target_ulong pc,
     TranslationBlock *tb, **ptb1;
     unsigned int h;
     target_ulong phys_pc, phys_page1, phys_page2, virt_page2;
+    fprintf(stderr, "tb_find_slow: pc=0x%lx cs_base=0x%lx flags=0x%lx\n", (long)pc, (long)cs_base, (long)flags);
 
     tb_invalidated_flag = 0;
 
@@ -157,11 +158,14 @@ static TranslationBlock *tb_find_slow(target_ulong pc,
         ptb1 = &tb->phys_hash_next;
     }
  not_found:
-   /* if no translated code available, then translate it now */
+  /* if no translated code available, then translate it now */
     tb = tb_gen_code(env, pc, cs_base, flags, 0);
+    fprintf(stderr, "tb_find_slow: generated tb=%p for pc=0x%lx\n", tb, (long)pc);
 
  found:
-    /* we add the TB in the virtual pc hash table */
+  /* we add the TB in the virtual pc hash table */
+    fprintf(stderr, "tb_find_slow: storing tb=%p in jmp_cache index=%zu\n", tb,
+            (size_t)tb_jmp_cache_hash_func(pc));
     env->tb_jmp_cache[tb_jmp_cache_hash_func(pc)] = tb;
     return tb;
 }

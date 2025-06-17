@@ -3830,6 +3830,8 @@ static int main_loop(void)
 #endif
     CPUState *env;
 
+    fprintf(stderr, "main_loop: start\n");
+
     cur_cpu = first_cpu;
     next_cpu = cur_cpu->next_cpu ?: first_cpu;
     for(;;) {
@@ -3856,9 +3858,11 @@ static int main_loop(void)
                     env->icount_decr.u16.low = decr;
                     env->icount_extra = count;
                 }
+                fprintf(stderr, "main_loop: executing CPU env=%p pc=0x%lx\n", env,
+                        (long)env->eip);
                 ret = cpu_exec(env);
 #ifdef CONFIG_PROFILER
-                qemu_time += profile_getclock() - ti;
+            qemu_time += profile_getclock() - ti;
 #endif
                 if (use_icount) {
                     /* Fold pending instructions back into the
