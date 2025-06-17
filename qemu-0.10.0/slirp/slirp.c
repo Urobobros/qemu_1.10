@@ -171,7 +171,7 @@ static void slirp_cleanup(void)
 static void slirp_state_save(QEMUFile *f, void *opaque);
 static int slirp_state_load(QEMUFile *f, void *opaque, int version_id);
 
-void slirp_init(int restrict, char *special_ip)
+void slirp_init(int restricted, char *special_ip)
 {
     //    debug_init("/tmp/slirp.log", DEBUG_DEFAULT);
 
@@ -184,7 +184,7 @@ void slirp_init(int restrict, char *special_ip)
 #endif
 
     link_up = 1;
-    slirp_restrict = restrict;
+    slirp_restrict = restricted;
 
     if_init();
     ip_init();
