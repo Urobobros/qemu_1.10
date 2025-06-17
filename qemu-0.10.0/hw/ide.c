@@ -1805,6 +1805,7 @@ static void ide_atapi_cmd(IDEState *s)
             lba = ube32_to_cpu(packet + 2);
             nb_sectors = ube16_to_cpu(packet + 7);
             cdaudio_set_bs(s->bs);
+            CDAUDIO_DPRINTF("PLAY_AUDIO_10 lba=%d count=%d\n", lba, nb_sectors);
             cdaudio_play_lba(lba, nb_sectors);
             ide_atapi_cmd_ok(s);
         }
@@ -1813,6 +1814,7 @@ static void ide_atapi_cmd(IDEState *s)
         { int start_lba = msf_to_lba_local(packet[3], packet[4], packet[5]);
           int end_lba = msf_to_lba_local(packet[6], packet[7], packet[8]);
           cdaudio_set_bs(s->bs);
+          CDAUDIO_DPRINTF("PLAY_AUDIO_MSF start=%d end=%d\n", start_lba, end_lba);
           cdaudio_play_lba(start_lba, end_lba - start_lba); }
         ide_atapi_cmd_ok(s);
         break;
@@ -1821,10 +1823,12 @@ static void ide_atapi_cmd(IDEState *s)
         ide_atapi_cmd_ok(s);
         break;
     case GPCMD_PAUSE_RESUME:
+        CDAUDIO_DPRINTF("PAUSE_RESUME %d\n", packet[8] & 1);
         if (packet[8] & 1) { cdaudio_pause(1); } else { cdaudio_pause(0); }
         ide_atapi_cmd_ok(s);
         break;
     case GPCMD_STOP_PLAY_SCAN:
+        CDAUDIO_DPRINTF("STOP_PLAY_SCAN\n");
         cdaudio_stop();
         ide_atapi_cmd_ok(s);
         break;
@@ -2119,6 +2123,7 @@ static void cdrom_change_cb(void *opaque)
 {
     IDEState *s = opaque;
     cdaudio_set_bs(s->bs);
+    CDAUDIO_DPRINTF("cdrom changed\n");
     uint64_t nb_sectors;
 
     bdrv_get_geometry(s->bs, &nb_sectors);
