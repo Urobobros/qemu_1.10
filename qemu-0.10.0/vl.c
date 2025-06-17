@@ -2259,6 +2259,11 @@ int drive_add(const char *file, const char *fmt, ...)
     }
 
     drives_opt[index].file = file;
+    if (file) {
+        fprintf(stderr, "drive_add: registering image '%s' (%s)\n", file, fmt);
+    } else {
+        fprintf(stderr, "drive_add: registering empty drive (%s)\n", fmt);
+    }
     va_start(ap, fmt);
     vsnprintf(drives_opt[index].opt,
               sizeof(drives_opt[0].opt), fmt, ap);
@@ -4970,7 +4975,21 @@ int main(int argc, char **argv, char **envp)
                 kernel_cmdline = optarg;
                 break;
             case QEMU_OPTION_cdrom:
+#ifdef CONFIG_CDAUDIO
+                {
+                    char cuepath[1024];
+                    if (cue_extract_bin(optarg, cuepath, sizeof(cuepath)) == 0) {
+                        fprintf(stderr, "drive option cdrom: using bin '%s' extracted from '%s'\n",
+                                cuepath, optarg);
+                        drive_add(cuepath, CDROM_ALIAS);
+                    } else {
+                        fprintf(stderr, "drive option cdrom: using image '%s'\n", optarg);
+                        drive_add(optarg, CDROM_ALIAS);
+                    }
+                }
+#else
                 drive_add(optarg, CDROM_ALIAS);
+#endif
                 break;
             case QEMU_OPTION_boot:
                 boot_devices = optarg;
