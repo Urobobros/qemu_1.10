@@ -21,6 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#include <stdio.h>
 #include "hw/hw.h"
 #include "hw/boards.h"
 #include "hw/usb.h"
@@ -37,6 +38,7 @@
 #include "qemu-timer.h"
 #include "qemu-char.h"
 #include "cache-utils.h"
+#include "debug_print.h"
 #include "block.h"
 #include "audio/audio.h"
 #include "migration.h"
@@ -137,6 +139,7 @@
 #define memalign(align, size) malloc(size)
 #endif
 
+#ifdef CONFIG_CDAUDIO
 #define LINE_BUF_LEN 1024
 
 CueSheet cue_sheet;
@@ -213,6 +216,7 @@ static int cue_extract_bin(const char *cuefile, char *out, int out_size)
     }
     return -1;
 }
+#endif /* CONFIG_CDAUDIO */
 #ifdef CONFIG_SDL
 #ifdef __APPLE__
 #include <SDL/SDL.h>
@@ -323,6 +327,7 @@ int semihosting_enabled = 0;
 int old_param = 0;
 #endif
 const char *qemu_name;
+int debug_prints = 0;
 int alt_grab = 0;
 #if defined(TARGET_SPARC) || defined(TARGET_PPC)
 unsigned int nb_prom_envs = 0;
@@ -3830,6 +3835,8 @@ static int main_loop(void)
 #endif
     CPUState *env;
 
+    DPRINTF("main_loop: start\n");
+
     cur_cpu = first_cpu;
     next_cpu = cur_cpu->next_cpu ?: first_cpu;
     for(;;) {
@@ -3856,9 +3863,12 @@ static int main_loop(void)
                     env->icount_decr.u16.low = decr;
                     env->icount_extra = count;
                 }
+                DPRINTF("main_loop: executing CPU env=%p pc=0x%lx\n", env,
+                        (long)env->eip);
                 ret = cpu_exec(env);
+                DPRINTF("main_loop: cpu_exec returned %d\n", ret);
 #ifdef CONFIG_PROFILER
-                qemu_time += profile_getclock() - ti;
+            qemu_time += profile_getclock() - ti;
 #endif
                 if (use_icount) {
                     /* Fold pending instructions back into the
@@ -4723,6 +4733,10 @@ int main(int argc, char **argv, char **envp)
     struct passwd *pwd = NULL;
     const char *chroot_dir = NULL;
     const char *run_as = NULL;
+
+    const char *dbg = getenv("DEBUG_PRINTS");
+    if (dbg && *dbg && strcmp(dbg, "0") != 0)
+        debug_prints = 1;
 
     qemu_cache_utils_init(envp);
 

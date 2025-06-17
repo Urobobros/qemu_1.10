@@ -18,6 +18,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA  02110-1301 USA
  */
 #include "config.h"
+#include <stdio.h>
+#include "debug_print.h"
 #define CPU_NO_GLOBAL_REGS
 #include "exec.h"
 #include "disas.h"
@@ -53,6 +55,7 @@ int tb_invalidated_flag;
 
 void cpu_loop_exit(void)
 {
+    DPRINTF("cpu_loop_exit: env=%p\n", env);
     /* NOTE: the register at this point must be saved by hand because
        longjmp restore them */
     regs_to_env();
@@ -97,6 +100,9 @@ static void cpu_exec_nocache(int max_cycles, TranslationBlock *orig_tb)
     unsigned long next_tb;
     TranslationBlock *tb;
 
+    DPRINTF("cpu_exec_nocache: pc=0x%lx flags=0x%x\n",
+            (long)orig_tb->pc, orig_tb->flags);
+
     /* Should never happen.
        We only end up here when an existing TB is too long.  */
     if (max_cycles > CF_COUNT_MASK)
@@ -124,6 +130,7 @@ static TranslationBlock *tb_find_slow(target_ulong pc,
     TranslationBlock *tb, **ptb1;
     unsigned int h;
     target_ulong phys_pc, phys_page1, phys_page2, virt_page2;
+    DPRINTF("tb_find_slow: pc=0x%lx cs_base=0x%lx flags=0x%lx\n", (long)pc, (long)cs_base, (long)flags);
 
     tb_invalidated_flag = 0;
 
@@ -157,11 +164,14 @@ static TranslationBlock *tb_find_slow(target_ulong pc,
         ptb1 = &tb->phys_hash_next;
     }
  not_found:
-   /* if no translated code available, then translate it now */
+  /* if no translated code available, then translate it now */
     tb = tb_gen_code(env, pc, cs_base, flags, 0);
+    DPRINTF("tb_find_slow: generated tb=%p for pc=0x%lx\n", tb, (long)pc);
 
  found:
-    /* we add the TB in the virtual pc hash table */
+  /* we add the TB in the virtual pc hash table */
+    DPRINTF("tb_find_slow: storing tb=%p in jmp_cache index=%zu\n", tb,
+            (size_t)tb_jmp_cache_hash_func(pc));
     env->tb_jmp_cache[tb_jmp_cache_hash_func(pc)] = tb;
     return tb;
 }
@@ -216,6 +226,9 @@ int cpu_exec(CPUState *env1)
     TranslationBlock *tb;
     uint8_t *tc_ptr;
     unsigned long next_tb;
+
+    DPRINTF("cpu_exec: start env=%p eip=0x%lx\n",
+            env1, (long)env1->eip);
 
     if (cpu_halted(env1) == EXCP_HALTED)
         return EXCP_HALTED;
@@ -604,6 +617,8 @@ int cpu_exec(CPUState *env1)
 
                 while (env->current_tb) {
                     tc_ptr = tb->tc_ptr;
+                    DPRINTF("cpu_exec: executing tb=%p pc=0x%lx\n", tb,
+                            (long)tb->pc);
                 /* execute the generated code */
 #if defined(__sparc__) && !defined(HOST_SOLARIS)
 #undef env
@@ -611,6 +626,8 @@ int cpu_exec(CPUState *env1)
 #define env cpu_single_env
 #endif
                     next_tb = tcg_qemu_tb_exec(tc_ptr);
+                    DPRINTF("cpu_exec: next_tb=0x%lx after tb=%p\n",
+                            next_tb, tb);
                     env->current_tb = NULL;
                     if ((next_tb & 3) == 2) {
                         /* Instruction counter expired.  */
@@ -756,6 +773,8 @@ static inline int handle_cpu_signal(unsigned long pc, unsigned long address,
 {
     TranslationBlock *tb;
     int ret;
+    DPRINTF("handle_cpu_signal: pc=0x%lx address=0x%lx write=%d\n",
+            pc, address, is_write);
 
     if (cpu_single_env)
         env = cpu_single_env; /* XXX: find a correct solution for multithread */
