@@ -49,6 +49,7 @@ int cdrom_read_toc(int nb_sectors, uint8_t *buf, int msf, int start_track)
     q = buf + 2;
     *q++ = 1; /* first session */
     *q++ = 1; /* last session */
+#ifdef CONFIG_CDAUDIO
     if (cue_sheet.track_count > 0) {
         int i;
         for (i = 0; i < cue_sheet.track_count; i++) {
@@ -67,7 +68,9 @@ int cdrom_read_toc(int nb_sectors, uint8_t *buf, int msf, int start_track)
                 q += 4;
             }
         }
-    } else if (start_track <= 1) {
+    } else
+#endif
+    if (start_track <= 1) {
         *q++ = 0; /* reserved */
         *q++ = 0x14; /* ADR, control */
         *q++ = 1;    /* track number */
