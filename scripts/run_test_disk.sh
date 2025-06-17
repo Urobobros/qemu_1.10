@@ -14,4 +14,4 @@ if [ ! -f "$IMG" ]; then
 fi
 
 cd qemu-0.10.0
-exec ./i386-softmmu/qemu -hda "../$IMG" -m 64
+exec ./i386-softmmu/qemu -L ./pc-bios -hda "../$IMG" -m 64
