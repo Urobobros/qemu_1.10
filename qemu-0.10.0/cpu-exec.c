@@ -54,6 +54,7 @@ int tb_invalidated_flag;
 
 void cpu_loop_exit(void)
 {
+    fprintf(stderr, "cpu_loop_exit: env=%p\n", env);
     /* NOTE: the register at this point must be saved by hand because
        longjmp restore them */
     regs_to_env();
@@ -609,6 +610,8 @@ int cpu_exec(CPUState *env1)
 
                 while (env->current_tb) {
                     tc_ptr = tb->tc_ptr;
+                    fprintf(stderr, "cpu_exec: executing tb=%p pc=0x%lx\n", tb,
+                            (long)tb->pc);
                 /* execute the generated code */
 #if defined(__sparc__) && !defined(HOST_SOLARIS)
 #undef env
@@ -616,6 +619,8 @@ int cpu_exec(CPUState *env1)
 #define env cpu_single_env
 #endif
                     next_tb = tcg_qemu_tb_exec(tc_ptr);
+                    fprintf(stderr, "cpu_exec: next_tb=0x%lx after tb=%p\n",
+                            next_tb, tb);
                     env->current_tb = NULL;
                     if ((next_tb & 3) == 2) {
                         /* Instruction counter expired.  */
