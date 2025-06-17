@@ -21,6 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#include <stdio.h>
 #include "hw/hw.h"
 #include "hw/boards.h"
 #include "hw/usb.h"
@@ -37,6 +38,7 @@
 #include "qemu-timer.h"
 #include "qemu-char.h"
 #include "cache-utils.h"
+#include "debug_print.h"
 #include "block.h"
 #include "audio/audio.h"
 #include "migration.h"
@@ -113,6 +115,7 @@
 #endif
 #endif
 
+#include <ctype.h>
 #include "qemu_socket.h"
 
 #if defined(CONFIG_SLIRP)
@@ -126,6 +129,7 @@
 #if defined(CONFIG_VDE)
 #include <libvdeplug.h>
 #endif
+#include "cuesheet.h"
 
 #ifdef _WIN32
 #include <malloc.h>
@@ -135,6 +139,84 @@
 #define memalign(align, size) malloc(size)
 #endif
 
+#ifdef CONFIG_CDAUDIO
+#define LINE_BUF_LEN 1024
+
+CueSheet cue_sheet;
+
+static int msf_to_lba(int m, int s, int f)
+{
+    return m * 60 * 75 + s * 75 + f - 150;
+}
+
+static int cue_extract_bin(const char *cuefile, char *out, int out_size)
+{
+    FILE *f = fopen(cuefile, "r");
+    char line[LINE_BUF_LEN];
+    char dir[1024];
+    const char *p;
+    int cur_is_audio = 0;
+
+    if (!f)
+        return -1;
+
+    memset(&cue_sheet, 0, sizeof(cue_sheet));
+
+    pstrcpy(dir, sizeof(dir), cuefile);
+    p = strrchr(dir, '/');
+#ifdef _WIN32
+    {
+        const char *p2 = strrchr(dir, '\\');
+        if (!p || p2 > p)
+            p = p2;
+    }
+#endif
+    if (p)
+        *(char *)(p + 1) = '\0';
+    else
+        dir[0] = '\0';
+
+    while (fgets(line, sizeof(line), f)) {
+        if (strstr(line, "FILE")) {
+            char *q = strchr(line, '"');
+            if (!q)
+                continue;
+            q++;
+            p = strchr(q, '"');
+            if (!p)
+                continue;
+            int len = p - q;
+            if (len > sizeof(cue_sheet.bin_path) - 1)
+                len = sizeof(cue_sheet.bin_path) - 1;
+            memcpy(cue_sheet.bin_path, q, len);
+            cue_sheet.bin_path[len] = '\0';
+            if (!path_is_absolute(cue_sheet.bin_path)) {
+                char tmp[1024];
+                path_combine(tmp, sizeof(tmp), dir, cue_sheet.bin_path);
+                pstrcpy(cue_sheet.bin_path, sizeof(cue_sheet.bin_path), tmp);
+            }
+        } else if (strstr(line, "TRACK")) {
+            cur_is_audio = strstr(line, "AUDIO") != NULL;
+        } else if (strstr(line, "INDEX 01")) {
+            int m, s, fframe;
+            if (sscanf(line, "%*s %*s %d:%d:%d", &m, &s, &fframe) == 3) {
+                if (cue_sheet.track_count < 100) {
+                    cue_sheet.tracks[cue_sheet.track_count].lba = msf_to_lba(m, s, fframe);
+                    cue_sheet.tracks[cue_sheet.track_count].is_audio = cur_is_audio;
+                    cue_sheet.track_count++;
+                }
+            }
+        }
+    }
+    fclose(f);
+
+    if (cue_sheet.track_count > 0) {
+        pstrcpy(out, out_size, cue_sheet.bin_path);
+        return 0;
+    }
+    return -1;
+}
+#endif /* CONFIG_CDAUDIO */
 #ifdef CONFIG_SDL
 #ifdef __APPLE__
 #include <SDL/SDL.h>
@@ -245,6 +327,7 @@ int semihosting_enabled = 0;
 int old_param = 0;
 #endif
 const char *qemu_name;
+int debug_prints = 0;
 int alt_grab = 0;
 #if defined(TARGET_SPARC) || defined(TARGET_PPC)
 unsigned int nb_prom_envs = 0;
@@ -3752,6 +3835,8 @@ static int main_loop(void)
 #endif
     CPUState *env;
 
+    DPRINTF("main_loop: start\n");
+
     cur_cpu = first_cpu;
     next_cpu = cur_cpu->next_cpu ?: first_cpu;
     for(;;) {
@@ -3778,9 +3863,12 @@ static int main_loop(void)
                     env->icount_decr.u16.low = decr;
                     env->icount_extra = count;
                 }
+                DPRINTF("main_loop: executing CPU env=%p pc=0x%lx\n", env,
+                        (long)env->eip);
                 ret = cpu_exec(env);
+                DPRINTF("main_loop: cpu_exec returned %d\n", ret);
 #ifdef CONFIG_PROFILER
-                qemu_time += profile_getclock() - ti;
+            qemu_time += profile_getclock() - ti;
 #endif
                 if (use_icount) {
                     /* Fold pending instructions back into the
@@ -4645,6 +4733,10 @@ int main(int argc, char **argv, char **envp)
     struct passwd *pwd = NULL;
     const char *chroot_dir = NULL;
     const char *run_as = NULL;
+
+    const char *dbg = getenv("DEBUG_PRINTS");
+    if (dbg && *dbg && strcmp(dbg, "0") != 0)
+        debug_prints = 1;
 
     qemu_cache_utils_init(envp);
 

@@ -27,6 +27,7 @@
 
 #include "qemu-common.h"
 #include "scsi-disk.h"
+#include "cuesheet.h"
 
 static void lba_to_msf(uint8_t *buf, int lba)
 {
@@ -48,6 +49,27 @@ int cdrom_read_toc(int nb_sectors, uint8_t *buf, int msf, int start_track)
     q = buf + 2;
     *q++ = 1; /* first session */
     *q++ = 1; /* last session */
+#ifdef CONFIG_CDAUDIO
+    if (cue_sheet.track_count > 0) {
+        int i;
+        for (i = 0; i < cue_sheet.track_count; i++) {
+            if (start_track > (i + 1))
+                continue;
+            *q++ = 0;
+            *q++ = cue_sheet.tracks[i].is_audio ? 0x10 : 0x14;
+            *q++ = i + 1;
+            *q++ = 0;
+            if (msf) {
+                *q++ = 0;
+                lba_to_msf(q, cue_sheet.tracks[i].lba);
+                q += 3;
+            } else {
+                cpu_to_be32wu((uint32_t *)q, cue_sheet.tracks[i].lba);
+                q += 4;
+            }
+        }
+    } else
+#endif
     if (start_track <= 1) {
         *q++ = 0; /* reserved */
         *q++ = 0x14; /* ADR, control */
@@ -58,7 +80,6 @@ int cdrom_read_toc(int nb_sectors, uint8_t *buf, int msf, int start_track)
             lba_to_msf(q, 0);
             q += 3;
         } else {
-            /* sector 0 */
             cpu_to_be32wu((uint32_t *)q, 0);
             q += 4;
         }

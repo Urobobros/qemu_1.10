@@ -35,6 +35,8 @@
 #include "mac_dbdma.h"
 #include "sh.h"
 #include "dma.h"
+#include "cdaudio.h"
+#include "cuesheet.h"
 
 /* debug IDE devices */
 //#define DEBUG_IDE
@@ -1239,6 +1241,8 @@ static void lba_to_msf(uint8_t *buf, int lba)
     buf[2] = lba % 75;
 }
 
+static int msf_to_lba_local(int m,int s,int f) { return m*60*75 + s*75 + f - 150; }
+
 static void cd_data_to_raw(uint8_t *buf, int lba)
 {
     /* sync bytes */
@@ -1786,14 +1790,43 @@ static void ide_atapi_cmd(IDEState *s)
                 break;
             case 0xf8:
                 /* read all data */
-                ide_atapi_cmd_read(s, lba, nb_sectors, 2352);
-                break;
-            default:
-                ide_atapi_cmd_error(s, SENSE_ILLEGAL_REQUEST,
-                                    ASC_INV_FIELD_IN_CMD_PACKET);
-                break;
-            }
+            ide_atapi_cmd_read(s, lba, nb_sectors, 2352);
+            break;
+        default:
+            ide_atapi_cmd_error(s, SENSE_ILLEGAL_REQUEST,
+                                ASC_INV_FIELD_IN_CMD_PACKET);
+            break;
         }
+        }
+        break;
+    case GPCMD_PLAY_AUDIO_10:
+        {
+            int lba, nb_sectors;
+            lba = ube32_to_cpu(packet + 2);
+            nb_sectors = ube16_to_cpu(packet + 7);
+            cdaudio_set_bs(s->bs);
+            cdaudio_play_lba(lba, nb_sectors);
+            ide_atapi_cmd_ok(s);
+        }
+        break;
+    case GPCMD_PLAY_AUDIO_MSF:
+        { int start_lba = msf_to_lba_local(packet[3], packet[4], packet[5]);
+          int end_lba = msf_to_lba_local(packet[6], packet[7], packet[8]);
+          cdaudio_set_bs(s->bs);
+          cdaudio_play_lba(start_lba, end_lba - start_lba); }
+        ide_atapi_cmd_ok(s);
+        break;
+    case GPCMD_PLAY_AUDIO_TI:
+    case GPCMD_PLAY_CD:
+        ide_atapi_cmd_ok(s);
+        break;
+    case GPCMD_PAUSE_RESUME:
+        if (packet[8] & 1) { cdaudio_pause(1); } else { cdaudio_pause(0); }
+        ide_atapi_cmd_ok(s);
+        break;
+    case GPCMD_STOP_PLAY_SCAN:
+        cdaudio_stop();
+        ide_atapi_cmd_ok(s);
         break;
     case GPCMD_SEEK:
         {
@@ -2085,6 +2118,7 @@ static void ide_cfata_metadata_write(IDEState *s)
 static void cdrom_change_cb(void *opaque)
 {
     IDEState *s = opaque;
+    cdaudio_set_bs(s->bs);
     uint64_t nb_sectors;
 
     bdrv_get_geometry(s->bs, &nb_sectors);

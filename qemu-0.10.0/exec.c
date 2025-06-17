@@ -27,6 +27,7 @@
 #endif
 #include <stdlib.h>
 #include <stdio.h>
+#include "debug_print.h"
 #include <stdarg.h>
 #include <string.h>
 #include <errno.h>
@@ -854,6 +855,9 @@ TranslationBlock *tb_gen_code(CPUState *env,
     target_ulong phys_pc, phys_page2, virt_page2;
     int code_gen_size;
 
+    DPRINTF("tb_gen_code: env=%p pc=0x%lx cs_base=0x%lx flags=0x%x\n",
+            env, (long)pc, (long)cs_base, flags);
+
     phys_pc = get_phys_addr_code(env, pc);
     tb = tb_alloc(pc);
     if (!tb) {
@@ -870,6 +874,8 @@ TranslationBlock *tb_gen_code(CPUState *env,
     tb->flags = flags;
     tb->cflags = cflags;
     cpu_gen_code(env, tb, &code_gen_size);
+    DPRINTF("tb_gen_code: generated tb=%p tc_ptr=%p size=%d\n", tb,
+            tc_ptr, code_gen_size);
     code_gen_ptr = (void *)(((unsigned long)code_gen_ptr + code_gen_size + CODE_GEN_ALIGN - 1) & ~(CODE_GEN_ALIGN - 1));
 
     /* check next page if needed */
@@ -879,6 +885,8 @@ TranslationBlock *tb_gen_code(CPUState *env,
         phys_page2 = get_phys_addr_code(env, virt_page2);
     }
     tb_link_phys(tb, phys_pc, phys_page2);
+    DPRINTF("tb_gen_code: linked tb=%p phys_pc=0x%lx phys_page2=0x%lx\n",
+            tb, (long)phys_pc, (long)phys_page2);
     return tb;
 }
 
