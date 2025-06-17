@@ -16,3 +16,14 @@ make -j$(nproc)
 
 The resulting `i386-softmmu/qemu` binary can then be run using your preferred
 arguments.
+
+## Quick disk test
+
+After building, you can create a small qcow2 disk image and boot QEMU with it:
+
+```sh
+./scripts/run_test_disk.sh               # creates 'disk.img' and boots it
+```
+
+The script uses `qemu-img` to create a 64MB image if it does not exist and
+passes it as the `-hda` drive.
