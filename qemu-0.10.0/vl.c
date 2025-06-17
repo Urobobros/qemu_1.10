@@ -38,6 +38,7 @@
 #include "qemu-timer.h"
 #include "qemu-char.h"
 #include "cache-utils.h"
+#include "debug_print.h"
 #include "block.h"
 #include "audio/audio.h"
 #include "migration.h"
@@ -326,6 +327,7 @@ int semihosting_enabled = 0;
 int old_param = 0;
 #endif
 const char *qemu_name;
+int debug_prints = 0;
 int alt_grab = 0;
 #if defined(TARGET_SPARC) || defined(TARGET_PPC)
 unsigned int nb_prom_envs = 0;
@@ -3833,7 +3835,7 @@ static int main_loop(void)
 #endif
     CPUState *env;
 
-    fprintf(stderr, "main_loop: start\n");
+    DPRINTF("main_loop: start\n");
 
     cur_cpu = first_cpu;
     next_cpu = cur_cpu->next_cpu ?: first_cpu;
@@ -3861,10 +3863,10 @@ static int main_loop(void)
                     env->icount_decr.u16.low = decr;
                     env->icount_extra = count;
                 }
-                fprintf(stderr, "main_loop: executing CPU env=%p pc=0x%lx\n", env,
+                DPRINTF("main_loop: executing CPU env=%p pc=0x%lx\n", env,
                         (long)env->eip);
                 ret = cpu_exec(env);
-                fprintf(stderr, "main_loop: cpu_exec returned %d\n", ret);
+                DPRINTF("main_loop: cpu_exec returned %d\n", ret);
 #ifdef CONFIG_PROFILER
             qemu_time += profile_getclock() - ti;
 #endif
@@ -4731,6 +4733,10 @@ int main(int argc, char **argv, char **envp)
     struct passwd *pwd = NULL;
     const char *chroot_dir = NULL;
     const char *run_as = NULL;
+
+    const char *dbg = getenv("DEBUG_PRINTS");
+    if (dbg && *dbg && strcmp(dbg, "0") != 0)
+        debug_prints = 1;
 
     qemu_cache_utils_init(envp);
 

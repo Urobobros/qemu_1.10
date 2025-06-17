@@ -10,8 +10,7 @@ headers used by the build.
 ```sh
 ./scripts/install_sdl12.sh     # installs libsdl1.2-dev if needed
 cd qemu-0.10.0
-./configure --target-list=i386-softmmu [--enable-cdaudio]
-make -j$(nproc)
+./compilation.sh               # builds i386-softmmu with -m32 and CD audio
 ```
 
 Passing `--enable-cdaudio` compiles the experimental CD audio support. Omit
@@ -26,7 +25,17 @@ After building, you can create a small qcow2 disk image and boot QEMU with it:
 
 ```sh
 ./scripts/run_test_disk.sh               # creates 'disk.img' and boots it
+# QUIET=1 ./scripts/run_test_disk.sh     # run silently
 ```
 
 The script uses `qemu-img` to create a 64MB image if it does not exist and
 passes it as the `-hda` drive.
+
+To run a game that uses CD audio, pass the `.cue` file to QEMU:
+
+```sh
+DEBUG_PRINTS=1 ./qemu-0.10.0/i386-softmmu/qemu -L ./qemu-0.10.0/pc-bios \
+    -cdrom path/to/game.cue -m 64
+```
+
+Unset `DEBUG_PRINTS` to hide the additional debug output.
