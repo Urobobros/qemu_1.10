@@ -113,6 +113,7 @@
 #endif
 #endif
 
+#include <ctype.h>
 #include "qemu_socket.h"
 
 #if defined(CONFIG_SLIRP)
@@ -126,6 +127,7 @@
 #if defined(CONFIG_VDE)
 #include <libvdeplug.h>
 #endif
+#include "cuesheet.h"
 
 #ifdef _WIN32
 #include <malloc.h>
@@ -135,6 +137,82 @@
 #define memalign(align, size) malloc(size)
 #endif
 
+#define LINE_BUF_LEN 1024
+
+CueSheet cue_sheet;
+
+static int msf_to_lba(int m, int s, int f)
+{
+    return m * 60 * 75 + s * 75 + f - 150;
+}
+
+static int cue_extract_bin(const char *cuefile, char *out, int out_size)
+{
+    FILE *f = fopen(cuefile, "r");
+    char line[LINE_BUF_LEN];
+    char dir[1024];
+    const char *p;
+    int cur_is_audio = 0;
+
+    if (!f)
+        return -1;
+
+    memset(&cue_sheet, 0, sizeof(cue_sheet));
+
+    pstrcpy(dir, sizeof(dir), cuefile);
+    p = strrchr(dir, '/');
+#ifdef _WIN32
+    {
+        const char *p2 = strrchr(dir, '\\');
+        if (!p || p2 > p)
+            p = p2;
+    }
+#endif
+    if (p)
+        *(char *)(p + 1) = '\0';
+    else
+        dir[0] = '\0';
+
+    while (fgets(line, sizeof(line), f)) {
+        if (strstr(line, "FILE")) {
+            char *q = strchr(line, '"');
+            if (!q)
+                continue;
+            q++;
+            p = strchr(q, '"');
+            if (!p)
+                continue;
+            int len = p - q;
+            if (len > sizeof(cue_sheet.bin_path) - 1)
+                len = sizeof(cue_sheet.bin_path) - 1;
+            memcpy(cue_sheet.bin_path, q, len);
+            cue_sheet.bin_path[len] = '\0';
+            if (!path_is_absolute(cue_sheet.bin_path)) {
+                char tmp[1024];
+                path_combine(tmp, sizeof(tmp), dir, cue_sheet.bin_path);
+                pstrcpy(cue_sheet.bin_path, sizeof(cue_sheet.bin_path), tmp);
+            }
+        } else if (strstr(line, "TRACK")) {
+            cur_is_audio = strstr(line, "AUDIO") != NULL;
+        } else if (strstr(line, "INDEX 01")) {
+            int m, s, fframe;
+            if (sscanf(line, "%*s %*s %d:%d:%d", &m, &s, &fframe) == 3) {
+                if (cue_sheet.track_count < 100) {
+                    cue_sheet.tracks[cue_sheet.track_count].lba = msf_to_lba(m, s, fframe);
+                    cue_sheet.tracks[cue_sheet.track_count].is_audio = cur_is_audio;
+                    cue_sheet.track_count++;
+                }
+            }
+        }
+    }
+    fclose(f);
+
+    if (cue_sheet.track_count > 0) {
+        pstrcpy(out, out_size, cue_sheet.bin_path);
+        return 0;
+    }
+    return -1;
+}
 #ifdef CONFIG_SDL
 #ifdef __APPLE__
 #include <SDL/SDL.h>
