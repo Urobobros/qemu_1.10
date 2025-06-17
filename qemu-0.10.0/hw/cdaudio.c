@@ -2,15 +2,6 @@
 #include "cdaudio.h"
 #include "bswap.h"
 
-/* Enable verbose CD audio debug output */
-//#define DEBUG_CDAUDIO
-#ifdef DEBUG_CDAUDIO
-# define CDAUDIO_DPRINTF(fmt, ...) \
-    fprintf(stderr, "cdaudio: " fmt, ## __VA_ARGS__)
-#else
-# define CDAUDIO_DPRINTF(fmt, ...) do { } while (0)
-#endif
-
 #ifdef CONFIG_CDAUDIO
 
 typedef struct CDAudioState {
@@ -28,6 +19,9 @@ static void cdaudio_callback(void *opaque, int free)
 {
     CDAudioState *s = opaque;
     uint8_t sector[2352];
+
+    CDAUDIO_DPRINTF("callback free=%d play=%d cur=%d end=%d\n", free,
+                    s->playing, s->cur_lba, s->end_lba);
 
     while (free >= 2352 && s->playing && s->cur_lba < s->end_lba) {
         if (!s->bs)
