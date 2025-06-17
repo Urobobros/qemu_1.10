@@ -54,7 +54,9 @@ int tb_invalidated_flag;
 
 void cpu_loop_exit(void)
 {
+#ifdef DEBUG_EXEC
     fprintf(stderr, "cpu_loop_exit: env=%p\n", env);
+#endif
     /* NOTE: the register at this point must be saved by hand because
        longjmp restore them */
     regs_to_env();
@@ -99,8 +101,10 @@ static void cpu_exec_nocache(int max_cycles, TranslationBlock *orig_tb)
     unsigned long next_tb;
     TranslationBlock *tb;
 
+#ifdef DEBUG_EXEC
     fprintf(stderr, "cpu_exec_nocache: pc=0x%lx flags=0x%x\n",
             (long)orig_tb->pc, orig_tb->flags);
+#endif
 
     /* Should never happen.
        We only end up here when an existing TB is too long.  */
@@ -129,7 +133,9 @@ static TranslationBlock *tb_find_slow(target_ulong pc,
     TranslationBlock *tb, **ptb1;
     unsigned int h;
     target_ulong phys_pc, phys_page1, phys_page2, virt_page2;
+#ifdef DEBUG_EXEC
     fprintf(stderr, "tb_find_slow: pc=0x%lx cs_base=0x%lx flags=0x%lx\n", (long)pc, (long)cs_base, (long)flags);
+#endif
 
     tb_invalidated_flag = 0;
 
@@ -165,12 +171,16 @@ static TranslationBlock *tb_find_slow(target_ulong pc,
  not_found:
   /* if no translated code available, then translate it now */
     tb = tb_gen_code(env, pc, cs_base, flags, 0);
+#ifdef DEBUG_EXEC
     fprintf(stderr, "tb_find_slow: generated tb=%p for pc=0x%lx\n", tb, (long)pc);
+#endif
 
  found:
   /* we add the TB in the virtual pc hash table */
+#ifdef DEBUG_EXEC
     fprintf(stderr, "tb_find_slow: storing tb=%p in jmp_cache index=%zu\n", tb,
             (size_t)tb_jmp_cache_hash_func(pc));
+#endif
     env->tb_jmp_cache[tb_jmp_cache_hash_func(pc)] = tb;
     return tb;
 }
@@ -226,8 +236,10 @@ int cpu_exec(CPUState *env1)
     uint8_t *tc_ptr;
     unsigned long next_tb;
 
+#ifdef DEBUG_EXEC
     fprintf(stderr, "cpu_exec: start env=%p eip=0x%lx\n",
             env1, (long)env1->eip);
+#endif
 
     if (cpu_halted(env1) == EXCP_HALTED)
         return EXCP_HALTED;
@@ -616,8 +628,10 @@ int cpu_exec(CPUState *env1)
 
                 while (env->current_tb) {
                     tc_ptr = tb->tc_ptr;
+#ifdef DEBUG_EXEC
                     fprintf(stderr, "cpu_exec: executing tb=%p pc=0x%lx\n", tb,
                             (long)tb->pc);
+#endif
                 /* execute the generated code */
 #if defined(__sparc__) && !defined(HOST_SOLARIS)
 #undef env
@@ -625,8 +639,10 @@ int cpu_exec(CPUState *env1)
 #define env cpu_single_env
 #endif
                     next_tb = tcg_qemu_tb_exec(tc_ptr);
+#ifdef DEBUG_EXEC
                     fprintf(stderr, "cpu_exec: next_tb=0x%lx after tb=%p\n",
                             next_tb, tb);
+#endif
                     env->current_tb = NULL;
                     if ((next_tb & 3) == 2) {
                         /* Instruction counter expired.  */
@@ -772,8 +788,10 @@ static inline int handle_cpu_signal(unsigned long pc, unsigned long address,
 {
     TranslationBlock *tb;
     int ret;
+#ifdef DEBUG_EXEC
     fprintf(stderr, "handle_cpu_signal: pc=0x%lx address=0x%lx write=%d\n",
             pc, address, is_write);
+#endif
 
     if (cpu_single_env)
         env = cpu_single_env; /* XXX: find a correct solution for multithread */
