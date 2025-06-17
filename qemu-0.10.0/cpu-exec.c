@@ -18,9 +18,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA  02110-1301 USA
  */
 #include "config.h"
+#include <stdio.h>
 #define CPU_NO_GLOBAL_REGS
 #include "exec.h"
-#include <stdio.h>
 #include "disas.h"
 #include "tcg.h"
 #include "kvm.h"

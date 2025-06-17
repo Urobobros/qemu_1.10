@@ -21,10 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#include <stdio.h>
 #include "hw/hw.h"
 #include "hw/boards.h"
 #include "hw/usb.h"
-#include <stdio.h>
 #include "hw/pcmcia.h"
 #include "hw/pc.h"
 #include "hw/audiodev.h"
