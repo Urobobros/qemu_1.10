@@ -154,6 +154,8 @@ static int cue_extract_bin(const char *cuefile, char *out, int out_size)
     char line[LINE_BUF_LEN];
     char dir[1024];
     char first_file[1024] = "";
+    char cur_file[1024] = "";
+    int track_num = 0;
     const char *p;
     int cur_is_audio = 0;
 
@@ -184,11 +186,13 @@ static int cue_extract_bin(const char *cuefile, char *out, int out_size)
         if (!strcasecmp(keyword, "FILE")) {
             char filename[1024];
             if (sscanf(line, " FILE \"%1023[^\"]\"", filename) == 1) {
-                if (first_file[0] == '\0')
-                    pstrcpy(first_file, sizeof(first_file), filename);
+                pstrcpy(cur_file, sizeof(cur_file), filename);
             }
         } else if (!strcasecmp(keyword, "TRACK")) {
             cur_is_audio = (strstr(line, "AUDIO") != NULL);
+            sscanf(line, " TRACK %d", &track_num);
+            if (track_num == 1 && first_file[0] == '\0' && cur_file[0] != '\0')
+                pstrcpy(first_file, sizeof(first_file), cur_file);
         } else if (!strcasecmp(keyword, "INDEX")) {
             int index, m, s, fframe;
             if (sscanf(line, " INDEX %d %d:%d:%d", &index, &m, &s, &fframe) == 4 && index == 1) {
