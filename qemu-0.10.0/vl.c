@@ -24,6 +24,7 @@
 #include "hw/hw.h"
 #include "hw/boards.h"
 #include "hw/usb.h"
+#include <stdio.h>
 #include "hw/pcmcia.h"
 #include "hw/pc.h"
 #include "hw/audiodev.h"

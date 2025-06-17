@@ -20,6 +20,7 @@
 #include "config.h"
 #define CPU_NO_GLOBAL_REGS
 #include "exec.h"
+#include <stdio.h>
 #include "disas.h"
 #include "tcg.h"
 #include "kvm.h"
