@@ -99,6 +99,9 @@ static void cpu_exec_nocache(int max_cycles, TranslationBlock *orig_tb)
     unsigned long next_tb;
     TranslationBlock *tb;
 
+    fprintf(stderr, "cpu_exec_nocache: pc=0x%lx flags=0x%x\n",
+            (long)orig_tb->pc, orig_tb->flags);
+
     /* Should never happen.
        We only end up here when an existing TB is too long.  */
     if (max_cycles > CF_COUNT_MASK)
@@ -222,6 +225,9 @@ int cpu_exec(CPUState *env1)
     TranslationBlock *tb;
     uint8_t *tc_ptr;
     unsigned long next_tb;
+
+    fprintf(stderr, "cpu_exec: start env=%p eip=0x%lx\n",
+            env1, (long)env1->eip);
 
     if (cpu_halted(env1) == EXCP_HALTED)
         return EXCP_HALTED;

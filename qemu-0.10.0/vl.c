@@ -3862,6 +3862,7 @@ static int main_loop(void)
                 fprintf(stderr, "main_loop: executing CPU env=%p pc=0x%lx\n", env,
                         (long)env->eip);
                 ret = cpu_exec(env);
+                fprintf(stderr, "main_loop: cpu_exec returned %d\n", ret);
 #ifdef CONFIG_PROFILER
             qemu_time += profile_getclock() - ti;
 #endif
